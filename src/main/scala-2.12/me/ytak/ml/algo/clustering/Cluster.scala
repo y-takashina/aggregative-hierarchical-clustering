@@ -2,6 +2,7 @@ package me.ytak.ml.algo.clustering
 
 import java.io.PrintStream
 
+import com.sun.javaws.exceptions.InvalidArgumentException
 import me.ytak.ml.algo.clustering.Cluster.{Couple, Single}
 
 /**
@@ -10,25 +11,10 @@ import me.ytak.ml.algo.clustering.Cluster.{Couple, Single}
 sealed abstract class Cluster[+T] {
   val size: Int
 
-  final def extract[U >: T](numberOfGroups: Int): Option[Set[Cluster[U]]] = {
-    if (this.size < numberOfGroups) return None
-    var xs = Set[Cluster[U]](this)
-    for (i <- 1 until numberOfGroups) {
-      val current = xs.maxBy(_.size)
-      current match {
-        case c: Couple[U] =>
-          xs += c.left
-          xs += c.right
-          xs -= c
-      }
-    }
-    Some(xs)
-  }
-
-  final def print[U >: T](indent: String = "", out: PrintStream = System.out): Unit = this match {
-    case s: Single[U] =>
+  final def print(indent: String = "", out: PrintStream = System.out): Unit = this match {
+    case s: Single[_] =>
       out.println(indent + "[ " + s.value + " ]")
-    case c: Couple[U] =>
+    case c: Couple[_] =>
       c.left.print(indent + "|-", out)
       c.right.print(indent.replaceAll("\\-|\\+", " ") + "+-", out)
   }
@@ -44,7 +30,10 @@ object Cluster {
     final val size = left.size + right.size
   }
 
-  def apply[T](value: T): Single[T] = Single[T](value)
+  def apply[T](value: T): Single[T] = value match {
+    case v: Cluster[T] => throw new InvalidArgumentException(Array("A cluster cannot have a cluster as its value."))
+    case _ => Single[T](value)
+  }
 
   def apply[T](left: Cluster[T], right: Cluster[T]): Couple[T] = Couple[T](left, right)
 
